@@ -7,14 +7,14 @@ class Dotnet < Formula
 
   stable do
     # Source-build tag announced at https://github.com/dotnet/source-build/discussions
-    version "9.0.8"
-    url "https://github.com/dotnet/dotnet/archive/refs/tags/v9.0.109.tar.gz"
-    sha256 "42fdfe3733884a3f6ceb3b428ff346ccb92f95010c447e27f3b164f70145730c"
+    version "10.0.1"
+    url "https://github.com/dotnet/dotnet/archive/refs/tags/v10.0.101.tar.gz"
+    sha256 "cac1181919374d061ff73e7e58cc9f7a5480acb0c8dc2e309c5bd844217f7962"
 
     resource "release.json" do
-      version "9.0.8"
-      url "https://github.com/dotnet/dotnet/releases/download/v9.0.109/release.json"
-      sha256 "328388103bf81072b638984d05b9dff5b6520a366d6448abbc7b985539deb8f4"
+      version "10.0.1"
+      url "https://github.com/dotnet/dotnet/releases/download/v10.0.101/release.json"
+      sha256 "9c27aa3643fa1562356bb8c4ab0a94fa22f7d2d23bdc546ecf61ed089cb4ffa1"
 
       livecheck do
         formula :parent
@@ -43,7 +43,7 @@ class Dotnet < Formula
   depends_on "pkgconf" => :build
   depends_on "rapidjson" => :build
   depends_on "brotli"
-  depends_on "icu4c@77"
+  depends_on "icu4c@78"
   depends_on "openssl@3"
 
   uses_from_macos "python" => :build
@@ -65,6 +65,9 @@ class Dotnet < Formula
   conflicts_with cask: "dotnet-sdk@preview"
 
   def install
+    # Fix `unbound variable` error if an array is empty:
+    # ./prep-source-build.sh: line 254: positional_args[@]: unbound variable
+    inreplace "prep-source-build.sh", '"${positional_args[@]}"', '"${positional_args[@]:-}"'
     if OS.mac?
       # Need GNU grep (Perl regexp support) to use release manifest rather than git repo
       ENV.prepend_path "PATH", Formula["grep"].libexec/"gnubin"
@@ -75,17 +78,10 @@ class Dotnet < Formula
     else
       icu4c_dep = deps.find { |dep| dep.name.match?(/^icu4c(@\d+)?$/) }
       ENV.append_path "LD_LIBRARY_PATH", icu4c_dep.to_formula.opt_lib
-
-      # Work around build script getting stuck when running shutdown command on Linux
-      # TODO: Try removing in the next release
-      # Ref: https://github.com/dotnet/source-build/discussions/3105#discussioncomment-4373142
-      inreplace "build.sh", '"$CLI_ROOT/dotnet" build-server shutdown', ""
-      inreplace "repo-projects/Directory.Build.targets",
-                '"$(DotnetTool) build-server shutdown --vbcscompiler"',
-                '"true"'
     end
 
-    args = ["--clean-while-building", "--source-build", "--with-system-libs", "brotli+libunwind+rapidjson+zlib"]
+    args = ["--clean-while-building", "--source-build", "--with-system-libs", "brotli+libunwind+rapidjson+zlib",
+            "/p:GenerateInstallers=false"]
     if build.stable?
       args += ["--release-manifest", "release.json"]
       odie "Update release.json resource!" if resource("release.json").version != version
