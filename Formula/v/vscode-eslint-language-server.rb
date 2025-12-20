@@ -5,12 +5,6 @@ class VscodeEslintLanguageServer < Formula
   sha256 "f002c40e8fbf3186abe65158a206e18970c572e38e1872354ba074e0e2d76ad6"
   license "MIT"
 
-  livecheck do
-    url :stable
-    strategy :github_latest
-    regex(%r{release/v?(\d+(?:\.\d+)*)}i)
-  end
-
   depends_on "node"
 
   def install
@@ -19,7 +13,6 @@ class VscodeEslintLanguageServer < Formula
 
     libexec.install Dir["*"]
 
-    # Create a wrapper script that explicitly invokes node with the server script
     (bin/"vscode-eslint-language-server").write <<~EOS
       #!/usr/bin/env bash
       exec "#{Formula["node"].opt_bin}/node" "#{libexec}/server/out/eslintServer.js" "$@"
